@@ -17,7 +17,8 @@ import numpy as np
     https://en.wikipedia.org/wiki/Recurrent_neural_network, and
     https://en.wikipedia.org/wiki/Gated_recurrent_unit
 
-    Pytorch seems to have an additional bias vector, which is different from the course litterature.
+    Pytorch implementation has an additional bias vector in the forward step 
+    for CuDNN compability. We could do something similar if performance is a bottleneck.
 
     TODO: Implement bidirectional networks. Test correctness.
 """
@@ -32,12 +33,12 @@ class RNNBase(nn.Module):
     _num_layers: int 
 
     # Weights and biases.
-    _W: dict[str, torch.Tensor] = {}
-    _U: dict[str, torch.Tensor] = {}
-    _b: dict[str, torch.Tensor] = {}
+    _W: nn.ParameterDict = nn.ParameterDict()
+    _U: nn.ParameterDict = nn.ParameterDict()
+    _b: nn.ParameterDict = nn.ParameterDict()
 
     # Activation functions.
-    _sigma: dict[str, nn.Module] = {}
+    _sigma: nn.ModuleDict = nn.ModuleDict()
 
     def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
         super().__init__()
@@ -45,34 +46,31 @@ class RNNBase(nn.Module):
         self._hidden_size = hidden_size
         self._num_layers = num_layers
 
-    # Set internal weights.
-    def _init_weights(self, key: str) -> None:
-        self._W[key] = torch.empty(self._num_layers, self._hidden_size, self._input_size)
-        self._U[key] = torch.empty(self._num_layers, self._hidden_size, self._hidden_size)
-        self._b[key] = torch.empty(self._num_layers, self._hidden_size)
-
-        k = 1 / self._hidden_size
+    def _init_weight(self, shape: tuple) -> torch.Tensor:
+        weight = torch.empty(self._num_layers, *shape)
         # Initialize from U(-sqrt(k), sqrt(k)) like in https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/rnn.py.
         # Other ideas are to sample from a normal distribution or use HE or Xavier initalizaiton. 
-        for layer in range(self._num_layers):
-            for weight in self._W[key][layer], self._U[key][layer], self._b[key][layer]:
-                weight = nn.init.uniform_(weight, -np.sqrt(k), np.sqrt(k))
+        k = 1 / self._hidden_size
+        weight = nn.init.uniform_(weight, -np.sqrt(k), np.sqrt(k))
+        return weight
+
+    # Set internal weights.
+    def _init_weights_triple(self, key: str) -> None:
+        self._W[key] = nn.Parameter(self._init_weight((self._hidden_size, self._input_size)))
+        self._U[key] = nn.Parameter(self._init_weight((self._hidden_size, self._hidden_size)))
+        self._b[key] = nn.Parameter(self._init_weight((self._hidden_size,)))
         
     # Children should implement this.
-    def forward(self, x: torch.Tensor, h0: torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, args: any) -> any:
         pass
 
 # Elman network
 class RNN(RNNBase):
     def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
-        for key in 'h', 'y':
-            self._init_weights(key)
-        self._W['y'] = torch.empty(self._num_layers, self._input_size, self._hidden_size)
-        self._b['y'] = torch.empty(self._num_layers, self._input_size)
-        k = 1 / self._hidden_size
-        self._W['y'] = nn.init.uniform_(self._W['y'], -np.sqrt(k), np.sqrt(k))
-        self._b['y'] = nn.init.uniform_(self._b['y'], -np.sqrt(k), np.sqrt(k))
+        self._init_weights_triple('h')
+        self._W['y'] = nn.Parameter(self._init_weight((self._input_size, self._input_size)))
+        self._b['y'] = nn.Parameter(self._init_weight((self._input_size,)))
 
         self._sigma['h'] = nn.Sigmoid()
         self._sigma['y'] = nn.Softmax(dim = -1)
@@ -91,7 +89,7 @@ class RNN(RNNBase):
         for t in range(seq_length):
             for layer in range(self._num_layers):
                 # Update equations.
-                h[layer] = self._sigma['h'](x[t] @ self._W['h'][layer].T + h[layer] @ self._U['h'][layer].T + self._b['h'][layer])
+                h[layer] = self._sigma['h'](x[t] @ self._W['h'][layer].mT + h[layer] @ self._U['h'][layer].mT + self._b['h'][layer])
             output[t] = h[-1]
             #output[t] = self._sigma['y'](h[-1] @ self._W['y'][layer].T + self._b['y'][layer])
         return output, h
@@ -111,7 +109,7 @@ class LSTM(RNNBase):
     def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
         for key in 'f', 'i', 'o', 'c':
-            self._init_weights(key)
+            self._init_weights_triple(key)
         self._sigma['g'] = nn.Sigmoid()
         self._sigma['c'] = nn.Tanh()
         self._sigma['h'] = nn.Tanh()  
@@ -159,7 +157,7 @@ class GRU(RNNBase):
     def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
         for key in 'z', 'r', 'h':
-            self._init_weights(key)
+            self._init_weights_triple(key)
         self._sigma['g'] = nn.Sigmoid() # Sigma in wikipedia article.
         self._sigma['h'] = nn.Tanh() # Phi in wikipedia article.
 

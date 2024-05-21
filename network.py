@@ -27,17 +27,13 @@ class Network(nn.Module):
     _rnn: mytorch.RNNBase | nn.RNNBase
     _embeddings: nn.Embedding
     _final: nn.Module
-    _w2i: dict[str, int] = {}
-    _i2w: list[str] = []
-    _device: str = (
-            "cuda" if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available()
-            else "cpu"
-        )
+    _w2i: dict[str, int]
+    _i2w: list[str]
     _vocab_size: int
     _output_size: int
     _embedding_dim: int
     _padding = 'PAD'
+    _device: str
 
     def __init__(self, 
                  data_src: DataSource = None, 
@@ -48,7 +44,13 @@ class Network(nn.Module):
                  dropout_rate: float = 0.5,
                  network_type: str = 'lstm') -> None:
         super().__init__()
-
+        self._device = (
+                "cuda" if torch.cuda.is_available()
+                else "mps" if torch.backends.mps.is_available()
+                else "cpu"
+            )
+        self._w2i = {}
+        self._i2w = []
         self.add_word(self._padding)
         self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
@@ -143,8 +145,8 @@ class Network(nn.Module):
             self.eval()
             print('Finished Training early')
 
-    def forward(self, x):
-        if type(x) == type(''):
+    def forward(self, x: any) -> None:
+        if type(x) == str:
             x = [x]
         max_len = max(map(len, x))
         x = map(\
@@ -179,56 +181,32 @@ class Network(nn.Module):
             self._i2w.append(word)
     
     def evaluate_model(self, batch_size, data_src: DataSource):
+        self.eval()
+        print('Evaluating model')
         odds = 0
         batch = 0
         for features, label in data_src.labeled_samples_batch(batch_size):
             batch += 1
-            #self.eval()
-
-            # ge till systemet
-            # softmaxa det hela
-            # jämför med resultat 
             logits = self.forward(features)
-            #torch.Size([1, 83])
-            #print(logits.shape)
-            probs = torch.softmax(logits, dim=-1)
+            probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
             index = torch.argmax(probs)
             result = self._i2w[index]
             if result == label[0]:
                 odds += 1
-                #print(odds)
             #print("Expected: " + str(label[0]))
             #print("Actual: " + str(result))
 
-
-        bet = odds/batch
-        print("Odds = " + str(bet))
-        # Odds = 0.84075 #about that value
+        bet = odds / batch
         return bet
-
-        
-            
-        # argmaxa
-
-
-        # jämför med labels
-        #with open data_src as file:
-        #    for line in data_src:
-        #        intake, label = data_src.split(",")
-        #        result = predict(intake)
-        #        print("Expected: " + str(label))
-        #        print("Actual: " + str(result))
-
-
-
 
     @staticmethod
     def main() -> None:
         data_src = DataSource("./data/train.txt")
-        net = Network(data_src, use_my_torch=False, network_type='lstm')
+        net = Network(data_src, use_my_torch=False, network_type='lstm', num_layers=1)
         net.train_model(data_src)
         data_test = DataSource("./data/test.txt")
         odds = net.evaluate_model(1, data_test)
+        print("Odds = " + str(odds))
         
 if __name__ == '__main__':
     Network.main()

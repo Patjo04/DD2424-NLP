@@ -44,7 +44,10 @@ class RNNBase(nn.Module):
     # Activation functions.
     _sigma: nn.ModuleDict
 
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
+    def __init__(self, 
+                 input_size: int, 
+                 hidden_size: int, 
+                 num_layers: int = 1) -> None:
         super().__init__()
         self._input_size = input_size
         self._hidden_size = hidden_size
@@ -74,7 +77,10 @@ class RNNBase(nn.Module):
 
 # Elman network
 class RNN(RNNBase):
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
+    def __init__(self, 
+                 input_size: int, 
+                 hidden_size: int, 
+                 num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
         self._init_weights_triple('h')
         self._W['y'] = nn.Parameter(self._init_weight((self._input_size, self._input_size)))
@@ -114,7 +120,10 @@ class RNN(RNNBase):
 
 # LSTM with a forget gate
 class LSTM(RNNBase):
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
+    def __init__(self, 
+                 input_size: int, 
+                 hidden_size: int, 
+                 num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
         for key in 'f', 'i', 'o', 'c':
             self._init_weights_triple(key)
@@ -163,7 +172,10 @@ class LSTM(RNNBase):
 
 # Fully gated unit
 class GRU(RNNBase):
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
+    def __init__(self, 
+                 input_size: int, 
+                 hidden_size: int, 
+                 num_layers: int = 1) -> None:
         super().__init__(input_size, hidden_size, num_layers)
         for key in 'z', 'r', 'h':
             self._init_weights_triple(key)

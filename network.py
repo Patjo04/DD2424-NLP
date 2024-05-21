@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import mytorch
-import data
+from data import DataSource
 
 """ 
     Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
@@ -9,7 +9,7 @@ import data
 """
 
 
-class DataSource:
+class DataSourceInterface:
     def vocab(self) -> list[str]:
         pass 
 
@@ -70,7 +70,7 @@ class Network(nn.Module):
                     else nn.RNN(embedding_dim, hidden_size, num_layers)
             case _:
                 raise ValueError("Unknown model.")
-        self._dropout = nn.Drop(p = dropout_rate)
+        self._dropout = nn.Dropout(p = dropout_rate)
         #self._final = nn.Linear(num_layers, self._output_size)
         layer_count = 0 
         layers = []
@@ -147,8 +147,6 @@ class Network(nn.Module):
     def forward(self, x):
         if type(x) == type(''):
             x = [x]
-        x = map(lambda ctx: ctx.split(), x)
-        x = list(x)
         max_len = max(map(len, x))
         x = map(\
                 lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
@@ -183,8 +181,8 @@ class Network(nn.Module):
 
     @staticmethod
     def main() -> None:
-        data_src = data.DataSource("./data/train.txt")
-        net = Network(data_src)
+        data_src = DataSource("./data/train.txt")
+        net = Network(data_src, use_my_torch=False)
         net.train_model(data_src)
         
 # TODO: Should probably be moved to another file.

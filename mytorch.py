@@ -3,12 +3,12 @@ from torch import nn
 import numpy as np
 
 """
-    Author: Erik Lidbjörk
+    Author: Erik Lidbjörk and Rasmus Söderström Nylander.
     Date: 2024.
     Overall structure (RNN, GRU, LSTM implements from RNNBase) and arguments to methods
-    is based on the offical source code: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/rnn.py,
+    is based on the official source code: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/rnn.py,
     due to it being easy to debug and compare our implementation with theirs.
-    The actual code is however written from scratch and based on the theory.
+    The actual code is however written from scratch and based on theory.
 
     Architectures and algorithms are based on 
     The course lectures,
@@ -20,7 +20,10 @@ import numpy as np
     Pytorch implementation has an additional bias vector in the forward step 
     for CuDNN compability. We could do something similar if performance is a bottleneck.
 
-    TODO: Implement bidirectional networks. Test correctness.
+    TODO: Implement bidirectional networks (if needed). 
+
+    Testing indicate that mytorch and pytorch implementations produce the same performance,
+    with the caveat that pytorch is many times faster (especially for lstm).
 """
 
 """
@@ -32,19 +35,24 @@ class RNNBase(nn.Module):
     _hidden_size: int 
     _num_layers: int 
 
+    # PSA: Initialize Paramters in a method.
     # Weights and biases.
-    _W: nn.ParameterDict = nn.ParameterDict()
-    _U: nn.ParameterDict = nn.ParameterDict()
-    _b: nn.ParameterDict = nn.ParameterDict()
+    _W: nn.ParameterDict
+    _U: nn.ParameterDict
+    _b: nn.ParameterDict
 
     # Activation functions.
-    _sigma: nn.ModuleDict = nn.ModuleDict()
+    _sigma: nn.ModuleDict
 
     def __init__(self, input_size: int, hidden_size: int, num_layers: int = 1) -> None:
         super().__init__()
         self._input_size = input_size
         self._hidden_size = hidden_size
         self._num_layers = num_layers
+        self._W = nn.ParameterDict()
+        self._U = nn.ParameterDict()
+        self._b = nn.ParameterDict()
+        self._sigma = nn.ModuleDict()
 
     def _init_weight(self, shape: tuple) -> torch.Tensor:
         weight = torch.empty(self._num_layers, *shape)
@@ -91,7 +99,6 @@ class RNN(RNNBase):
                 # Update equations.
                 h[layer] = self._sigma['h'](x[t] @ self._W['h'][layer].T + h[layer].clone() @ self._U['h'][layer].T + self._b['h'][layer])
             output[t] = h[-1]
-            hprev = h
             #output[t] = self._sigma['y'](h[-1] @ self._W['y'][layer].T + self._b['y'][layer])
         return output, h
 
@@ -195,7 +202,6 @@ class GRU(RNNBase):
         output, hn = rnn(input, h0)
 
 # Test classes. 
-# No run-time errors but correctness checks needed.
 if __name__ == '__main__':
     RNN.main()
     LSTM.main()

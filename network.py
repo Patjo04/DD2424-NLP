@@ -5,7 +5,7 @@ from data import DataSource
 import numpy as np
 
 """ 
-    Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
+    Authors: Rasmus Söderström Nylander, Erik Lidbjörk, Patrik Johansson and Gustaf Larsson.
     Date: 2024.
 """
 
@@ -225,7 +225,7 @@ class Network(nn.Module):
     @staticmethod
     def main() -> None:
         data_src = DataSource("./data/train.txt")
-        net = Network(data_src, use_my_torch=True, network_type='gru')
+        net = Network(data_src, use_my_torch=False, network_type='lstm')
         net.train_model(data_src)
         data_test = DataSource("./data/test.txt")
         odds = net.evaluate_model(1, data_test)

@@ -72,7 +72,7 @@ class RNN(RNNBase):
         self._W['y'] = nn.Parameter(self._init_weight((self._input_size, self._input_size)))
         self._b['y'] = nn.Parameter(self._init_weight((self._input_size,)))
 
-        self._sigma['h'] = nn.Sigmoid()
+        self._sigma['h'] = nn.Tanh()
         self._sigma['y'] = nn.Softmax(dim = -1)
 
     # Took inspiration from: https://pytorch.org/docs/stable/generated/torch.nn.RNN.html. 
@@ -89,8 +89,9 @@ class RNN(RNNBase):
         for t in range(seq_length):
             for layer in range(self._num_layers):
                 # Update equations.
-                h[layer] = self._sigma['h'](x[t] @ self._W['h'][layer].mT + h[layer] @ self._U['h'][layer].mT + self._b['h'][layer])
+                h[layer] = self._sigma['h'](x[t] @ self._W['h'][layer].T + h[layer].clone() @ self._U['h'][layer].T + self._b['h'][layer])
             output[t] = h[-1]
+            hprev = h
             #output[t] = self._sigma['y'](h[-1] @ self._W['y'][layer].T + self._b['y'][layer])
         return output, h
 
@@ -132,11 +133,12 @@ class LSTM(RNNBase):
         for t in range(seq_length):
             for layer in range(self._num_layers):
                 # Update equations.
-                f = self._sigma['g'](x[t] @ self._W['f'][layer].T + h[layer] @ self._U['f'][layer].T + self._b['f'][layer])
-                i = self._sigma['g'](x[t] @ self._W['i'][layer].T + h[layer] @ self._U['i'][layer].T + self._b['i'][layer])
-                o = self._sigma['g'](x[t] @ self._W['o'][layer].T + h[layer] @ self._U['o'][layer].T + self._b['o'][layer])
-                ct = self._sigma['c'](x[t] @ self._W['c'][layer].T + h[layer] @ self._U['c'][layer].T + self._b['c'][layer])
-                c[layer] = f * c[layer] + i * ct
+                hclone = h[layer].clone()
+                f = self._sigma['g'](x[t] @ self._W['f'][layer].T + hclone @ self._U['f'][layer].T + self._b['f'][layer])
+                i = self._sigma['g'](x[t] @ self._W['i'][layer].T + hclone @ self._U['i'][layer].T + self._b['i'][layer])
+                o = self._sigma['g'](x[t] @ self._W['o'][layer].T + hclone @ self._U['o'][layer].T + self._b['o'][layer])
+                ct = self._sigma['c'](x[t] @ self._W['c'][layer].T + hclone @ self._U['c'][layer].T + self._b['c'][layer])
+                c[layer] = f * c[layer].clone() + i * ct
                 h[layer] = o * self._sigma['h'](c[layer])
             output[t] = h[-1]
         return output, (h, c)
@@ -174,10 +176,11 @@ class GRU(RNNBase):
         for t in range(seq_length):
             for layer in range(self._num_layers):
                 # Update equations.
-                z = self._sigma['g'](x[t] @ self._W['z'][layer].T + h[layer] @ self._U['z'][layer].T + self._b['z'][layer])
-                r = self._sigma['g'](x[t] @ self._W['r'][layer].T + h[layer] @ self._U['r'][layer].T + self._b['r'][layer])
-                hh = self._sigma['h'](x[t] @ self._W['h'][layer].T + (r * h[layer]) @ self._U['h'][layer].T + self._b['h'][layer])
-                h[layer] = (1 - z) * h[layer] + z * hh
+                hclone = h[layer].clone()
+                z = self._sigma['g'](x[t] @ self._W['z'][layer].T + hclone @ self._U['z'][layer].T + self._b['z'][layer])
+                r = self._sigma['g'](x[t] @ self._W['r'][layer].T + hclone @ self._U['r'][layer].T + self._b['r'][layer])
+                hh = self._sigma['h'](x[t] @ self._W['h'][layer].T + (r * hclone) @ self._U['h'][layer].T + self._b['h'][layer])
+                h[layer] = (1 - z) * hclone + z * hh
             output[t] = h[-1]
         return output, h
 

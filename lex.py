@@ -67,6 +67,7 @@ class Lexer:
         '||': 'OR',
         '++': 'INC',
         '--': 'DEC',
+        '->': 'ARROW'
     }
     SHORT3 = {
         '<<=': 'LSHIFT_ASSIGN',
@@ -155,7 +156,7 @@ class Lexer:
             ch = source.lookahead()
             if ch.lower() in '_abcdefghijklmnopqrtstuvwxyz':
                 self.lex_ident(source)
-            elif ch in '0123456789':
+            elif ch in '0123456789' or ch in '-' and source.chars_left() >= 2 and source.lookahead(2)[1] in '0123456789':
                 self.lex_num(source)
             elif ch == '"':
                 self.lex_string(source)
@@ -185,7 +186,7 @@ class Lexer:
             self._tokens.append((ident, 'IDENT'))
 
     def lex_num(self, source):
-        VALID = set(list('0123456789abcdefghijklmnopqrstuvwxyz.'))
+        VALID = set(list('-0123456789abcdefghijklmnopqrstuvwxyz.'))
         num = ''
         float_ = False
         hex_ = False
@@ -245,7 +246,7 @@ class Lexer:
 
 
 if __name__ == '__main__':
-    with open('main.c', 'r') as f:
+    with open('main2.c', 'r') as f:
         lex = Lexer()
         lex.lex_file(f)
         print(lex._tokens)

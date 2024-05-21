@@ -33,7 +33,6 @@ class Network(nn.Module):
             else "mps" if torch.backends.mps.is_available()
             else "cpu"
         )
-    _NUM_SPECIAL_WORDS: int
     _vocab_size: int
     _output_size: int
     _embedding_dim: int
@@ -49,7 +48,6 @@ class Network(nn.Module):
                  network_type: str = 'lstm') -> None:
         super().__init__()
 
-        self._NUM_SPECIAL_WORDS = 1
         self.add_word(self._padding)
         self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
@@ -117,7 +115,7 @@ class Network(nn.Module):
                     # get the inputs; data is a list of [inputs, labels]
                     contexts, labels = data
 
-                    labels = list(map(lambda l: Special.UNKNOWN if l not in self._w2i else l, labels))
+                    #labels = list(map(lambda l: Special.UNKNOWN if l not in self._w2i else l, labels))
                     labels = list(map(lambda l: self._w2i[l], labels))
                     labels = torch.tensor(labels).to(self._device)
                 
@@ -182,21 +180,8 @@ class Network(nn.Module):
     @staticmethod
     def main() -> None:
         data_src = DataSource("./data/train.txt")
-        net = Network(data_src, use_my_torch=False)
+        net = Network(data_src, use_my_torch=True, network_type='gru')
         net.train_model(data_src)
         
-# TODO: Should probably be moved to another file.
-class Special:
-    PADDING = '<P>'
-    UNKNOWN = '<U>'
-    START = '<S>'
-    
-    def all():
-        return [Special.PADDING, Special.UNKNOWN, Special.START]
-    
-    def size(): 
-        return len(Special.all())
-
-
 if __name__ == '__main__':
     Network.main()

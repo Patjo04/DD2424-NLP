@@ -86,10 +86,12 @@ class Lexer:
         self._tokens = []
 
     def lex_file(self, reader):
+        self._tokens = []
         contents = reader.read()
         source = Source(contents)
         source = self.remove_comments(source)
         self.lex(source)
+        return self._tokens
 
     def remove_comments(self, source):
         NO_COMMENT = 0

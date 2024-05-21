@@ -83,6 +83,7 @@ class Network(nn.Module):
                 torch.nn.Linear(\
                 num_layers * hidden_size,\
                 self._output_size))
+        self.to(self._device)
 
     def train_model(self, 
                     data_src: DataSource, 

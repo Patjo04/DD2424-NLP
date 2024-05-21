@@ -71,10 +71,10 @@ def main():
 
     train_file = f"data/train.txt"
     test_file = f"data/test.txt"
-    with open(train_file, "w", encoding) as writer:
+    with open(train_file, "w", encoding=encoding) as writer:
         for sample in training:
             writer.writelines([sample])
-    with open(test_file, "w", encoding) as writer:
+    with open(test_file, "w", encoding=encoding) as writer:
         for sample in test:
             writer.writelines([sample])
 

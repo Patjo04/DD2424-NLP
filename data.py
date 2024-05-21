@@ -24,7 +24,7 @@ class DataSource:
             yield features, labels
 
     def labeled_samples(self, ):
-        with open(self._path, 'r', self._encoding) as f:
+        with open(self._path, 'r', encoding=self._encoding) as f:
             for line in f.readlines():
                 parts = line.split(',')
                 feature = parts[0].split()

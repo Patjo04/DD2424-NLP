@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import mytorch
 from data import DataSource
+import numpy as np
 
 """ 
     Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
@@ -178,12 +179,58 @@ class Network(nn.Module):
             idx = len(self._i2w)
             self._w2i[word] = idx
             self._i2w.append(word)
+    
+    def evaluate_model(self, batch_size, data_src: DataSource):
+        odds = 0
+        batch = 0
+        for features, label in data_src.labeled_samples_batch(batch_size):
+            batch += 1
+            #self.eval()
+
+            # ge till systemet
+            # softmaxa det hela
+            # jämför med resultat 
+            logits = self.forward(features)
+            #torch.Size([1, 83])
+            #print(logits.shape)
+            probs = torch.softmax(logits, dim=-1)
+            index = torch.argmax(probs)
+            result = self._i2w[index]
+            if result == label[0]:
+                odds += 1
+                #print(odds)
+            #print("Expected: " + str(label[0]))
+            #print("Actual: " + str(result))
+
+
+        bet = odds/batch
+        print("Odds = " + str(bet))
+        # Odds = 0.84075 #about that value
+        return bet
+
+        
+            
+        # argmaxa
+
+
+        # jämför med labels
+        #with open data_src as file:
+        #    for line in data_src:
+        #        intake, label = data_src.split(",")
+        #        result = predict(intake)
+        #        print("Expected: " + str(label))
+        #        print("Actual: " + str(result))
+
+
+
 
     @staticmethod
     def main() -> None:
         data_src = DataSource("./data/train.txt")
         net = Network(data_src, use_my_torch=False)
         net.train_model(data_src)
+        data_test = DataSource("./data/test.txt")
+        odds = net.evaluate_model(1, data_test)
         
 # TODO: Should probably be moved to another file.
 class Special:

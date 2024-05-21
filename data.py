@@ -9,7 +9,7 @@ class DataSource:
         return Lexer.VOCAB 
 
     # Return a list of data (context, label):
-    def labeled_samples_batch(self, batch_size: int, discard_trailing=False) -> list[tuple[any]]:
+    def labeled_samples_batch(self, batch_size: int, discard_trailing=False) -> any:
         batch_size = max(1, batch_size)
         features = []
         labels = []

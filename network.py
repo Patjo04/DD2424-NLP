@@ -1,12 +1,21 @@
 import torch
 from torch import nn
 import mytorch
-from data import DataSource
+import data
 
 """ 
     Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
     Date: 2024.
 """
+
+
+class DataSource:
+    def vocab(self) -> list[str]:
+        pass 
+
+    # Return a list of data (context, label):
+    def labeled_samples_batch(batch_size: int) -> any:
+        pass 
 
 """ 
     TODO: Read from data source (fill word-index), 
@@ -40,9 +49,9 @@ class Network(nn.Module):
                  network_type: str = 'lstm') -> None:
         super().__init__()
 
-        self._NUM_SPECIAL_WORDS = Special.size()
+        self._NUM_SPECIAL_WORDS = 1
         self.add_word(self._padding)
-        self.learn_vocab()
+        self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
         self._output_size = self._vocab_size
         self._embedding_dim = embedding_dim
@@ -174,8 +183,9 @@ class Network(nn.Module):
 
     @staticmethod
     def main() -> None:
-        net = Network('data')
-        net.train_model('data')
+        data_src = data.DataSource("./data/train.txt")
+        net = Network(data_src)
+        net.train_model(data_src)
         
 # TODO: Should probably be moved to another file.
 class Special:

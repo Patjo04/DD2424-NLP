@@ -183,18 +183,34 @@ class Network(nn.Module):
             self._i2w.append(word)
     
     def evaluate_model(self, batch_size, data_src: DataSource):
+<<<<<<< HEAD
         self.eval()
         print('Evaluating model')
+=======
+>>>>>>> evaluation code fixed, about 84%
         odds = 0
         batch = 0
         for features, label in data_src.labeled_samples_batch(batch_size):
             batch += 1
+<<<<<<< HEAD
             logits = self.forward(features)
             probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
+=======
+            #self.eval()
+
+            # ge till systemet
+            # softmaxa det hela
+            # jämför med resultat 
+            logits = self.forward(features)
+            #torch.Size([1, 83])
+            #print(logits.shape)
+            probs = torch.softmax(logits, dim=-1)
+>>>>>>> evaluation code fixed, about 84%
             index = torch.argmax(probs)
             result = self._i2w[index]
             if result == label[0]:
                 odds += 1
+<<<<<<< HEAD
             #print("Expected: " + str(label[0]))
             #print("Actual: " + str(result))
 
@@ -226,6 +242,41 @@ class Network(nn.Module):
         data_test = DataSource("./data/test.txt")
         odds = net.evaluate_model(1, data_test)
         print("Acc = " + str(odds))
+=======
+                #print(odds)
+            #print("Expected: " + str(label[0]))
+            #print("Actual: " + str(result))
+
+
+        bet = odds/batch
+        print("Odds = " + str(bet))
+        # Odds = 0.84075 #about that value
+        return bet
+
+        
+            
+        # argmaxa
+
+
+        # jämför med labels
+        #with open data_src as file:
+        #    for line in data_src:
+        #        intake, label = data_src.split(",")
+        #        result = predict(intake)
+        #        print("Expected: " + str(label))
+        #        print("Actual: " + str(result))
+
+
+
+
+    @staticmethod
+    def main() -> None:
+        data_src = DataSource("./data/train.txt")
+        net = Network(data_src, use_my_torch=False)
+        net.train_model(data_src)
+        data_test = DataSource("./data/test.txt")
+        odds = net.evaluate_model(1, data_test)
+>>>>>>> evaluation code fixed, about 84%
         
 if __name__ == '__main__':
     Network.main()

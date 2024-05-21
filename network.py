@@ -8,6 +8,15 @@ from data import DataSource
     Date: 2024.
 """
 
+
+class DataSourceInterface:
+    def vocab(self) -> list[str]:
+        pass 
+
+    # Return a list of data (context, label):
+    def labeled_samples_batch(batch_size: int) -> any:
+        pass 
+
 """ 
     TODO: Read from data source (fill word-index), 
     continue implement training function,
@@ -40,9 +49,9 @@ class Network(nn.Module):
                  network_type: str = 'lstm') -> None:
         super().__init__()
 
-        self._NUM_SPECIAL_WORDS = Special.size()
+        self._NUM_SPECIAL_WORDS = 1
         self.add_word(self._padding)
-        self.learn_vocab()
+        self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
         self._output_size = self._vocab_size
         self._embedding_dim = embedding_dim
@@ -61,7 +70,7 @@ class Network(nn.Module):
                     else nn.RNN(embedding_dim, hidden_size, num_layers)
             case _:
                 raise ValueError("Unknown model.")
-        self._dropout = nn.Drop(p = dropout_rate)
+        self._dropout = nn.Dropout(p = dropout_rate)
         #self._final = nn.Linear(num_layers, self._output_size)
         layer_count = 0 
         layers = []
@@ -138,8 +147,6 @@ class Network(nn.Module):
     def forward(self, x):
         if type(x) == type(''):
             x = [x]
-        x = map(lambda ctx: ctx.split(), x)
-        x = list(x)
         max_len = max(map(len, x))
         x = map(\
                 lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
@@ -174,8 +181,9 @@ class Network(nn.Module):
 
     @staticmethod
     def main() -> None:
-        net = Network('data')
-        net.train_model('data')
+        data_src = DataSource("./data/train.txt")
+        net = Network(data_src, use_my_torch=False)
+        net.train_model(data_src)
         
 # TODO: Should probably be moved to another file.
 class Special:

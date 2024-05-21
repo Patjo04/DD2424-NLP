@@ -1,20 +1,12 @@
 import torch
 from torch import nn
 import mytorch
+from data import DataSource
 
 """ 
     Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
     Date: 2024.
 """
-
-
-class DataSource:
-    def vocab(self) -> list[str]:
-        pass 
-
-    # Return a list of data (context, label):
-    def labeled_samples_batch(batch_size: int) -> list[tuple[any]]:
-        pass 
 
 """ 
     TODO: Read from data source (fill word-index), 

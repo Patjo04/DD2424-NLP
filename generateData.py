@@ -45,6 +45,7 @@ def main():
     num_samples = 50 ##1000000
     dropout = 0.5
     num_samples_pre_dropout = num_samples / dropout
+    encoding = 'utf-8'
     
     while len(samples) < num_samples_pre_dropout: #Read lines from files until batch is filled
 
@@ -70,10 +71,10 @@ def main():
 
     train_file = f"data/train.txt"
     test_file = f"data/test.txt"
-    with open(train_file, "w") as writer:
+    with open(train_file, "w", encoding) as writer:
         for sample in training:
             writer.writelines([sample])
-    with open(test_file, "w") as writer:
+    with open(test_file, "w", encoding) as writer:
         for sample in test:
             writer.writelines([sample])
 

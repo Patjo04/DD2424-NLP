@@ -81,6 +81,9 @@ class Lexer:
                 'struct', 'switch', 'typedef', 'union',
                 'unsigned', 'void', 'volatile', 'while',
                 'inline'}
+    
+    VOCAB = ['IDENT', 'INT', 'FLOAT', 'CHAR', 'STRING'] + list(map(lambda w: f'KW_{w.upper()}', KEYWORDS))\
+          + list(SHORT1.values()) + list(SHORT2.values()) + list(SHORT3.values())
 
     def __init__(self):
         self._tokens = []

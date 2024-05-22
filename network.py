@@ -5,7 +5,7 @@ from data import DataSource
 import numpy as np
 
 """ 
-    Authors: Erik Lidbjörk and Rasmus Söderström Nylander.
+    Authors: Erik Lidbjörk, Rasmus Söderström Nylander, Patrik Johansson.
     Date: 2024.
 """
 
@@ -134,8 +134,8 @@ class Network(nn.Module):
                     # print statistics
                     running_loss += loss.item()
                     epoch_loss += loss.item()
-                    if i % 200 == 199:    # print every 200 mini-batches
-                        print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 200:.3f}')
+                    if i % 400 == 399:    # print every 200 mini-batches
+                        print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 400:.3f}')
                         running_loss = 0.0
                 print(f'[epoch {epoch + 1}] loss: {epoch_loss / (i+1):.3f}')
             self.eval()
@@ -228,10 +228,36 @@ class Network(nn.Module):
     def main() -> None:
         data_src = DataSource("./data/train.txt")
         net = Network(data_src, use_my_torch=False)
-        net.train_model(data_src)
         data_test = DataSource("./data/test.txt")
-        odds = net.evaluate_model(1, data_test)
-        
+
+        gathered = [[],[],[],[],[]]
+        for i, data in enumerate(data_src.labeled_samples_batch(1)):
+            gathered[(i%5)-1].append(data)
+            
+        for i in range(0, 5):
+            val = gathered[i]
+            train = gathered.remove[i]
+
+        epochs = 10
+        accuracy = {}
+        for i in range(1, epochs+1):
+            net.train_model(data_src)
+            accuracy[i] = net.evaluate_model(1, data_test)
+
+        print(accuracy)
+        # --> before training: Odds = 0.00955
+        # 0.8368
+        # 0.8569
+        # 0.8663
+        # 0.87165
+        # 0.875
+        # 0.8803
+        # 0.88155
+        # 0.88165
+        # 0.88525
+
+        # {1: 0.65505, 2: 0.6687, 3: 0.67475, 4: 0.6745, 5: 0.67745, 6: 0.6852, 7: 0.6842, 8: 0.6838, 9: 0.68575, 10: 0.6873}
+        # {1: 0.4941, 2: 0.49485, 3: 0.4951, 4: 0.4945, 5: 0.495, 6: 0.495, 7: 0.49485, 8: 0.4952, 9: 0.495, 10: 0.4952}
 # TODO: Should probably be moved to another file.
 class Special:
     PADDING = '<P>'

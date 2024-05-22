@@ -1,13 +1,17 @@
-#Program to generate data files from code in the linux github repo.
-#For the program to work the linux repo has to be in the same directory as this repo
-
 import os
 import random
 from lex import Lexer
 
+""" 
+    Authors: Gustaf Larsson & Rasmus Söderström Nylander.
+    Date: 2024.
 
-def getFile():
-    path = '.'
+    Generate data files from code in the linux github repo.
+    The linux repo has to be in the same directory as this repo for the program to work
+"""
+
+def getFile(used_files):
+    path = '../linux'
     if not os.path.exists(path):
         raise FileNotFoundError(f"The linux repo must be in the same directory as this repo")
 
@@ -17,7 +21,13 @@ def getFile():
     for root, dirs, files in os.walk(path, topdown=False):
         for name in files:
             if name.endswith('.c'):
-                file_list.append(os.path.join(root, name))
+                file = os.path.join(root, name)
+                if file not in used_files:
+                    file_list.append(file)
+
+    #Raise error if there are no files
+    if not file_list:
+        raise Exception("All files used but not enough data generated")
 
     #choose a file at random and return it
     chosen_one = random.choice(file_list)
@@ -42,13 +52,14 @@ def main():
     samples = []
     lexer = Lexer()
     used_files = set() #Keep track of read files so that each file is used only once
-    num_samples = 50 ##1000000
+    num_samples = 100000
     dropout = 0.5
     num_samples_pre_dropout = num_samples / dropout
+    context = 5
     
     while len(samples) < num_samples_pre_dropout: #Read lines from files until batch is filled
 
-        input_file = getFile()
+        input_file = getFile(used_files)
         if input_file in used_files:
             continue
         used_files.add(input_file)
@@ -56,7 +67,10 @@ def main():
         with open(input_file, "r") as reader:
             tokens = lexer.lex_file(reader)
             tokens = list(map(lambda tup: tup[1], tokens))
-            for feature, label in generate_samples(tokens, 5, 2):
+
+            left_context = random.randint(0, context)
+            right_context = context - left_context
+            for feature, label in generate_samples(tokens, left_context,right_context):
                 sample = f'{feature}, {label}\n'
                 samples.append(sample)
     
@@ -76,6 +90,8 @@ def main():
     with open(test_file, "w") as writer:
         for sample in test:
             writer.writelines([sample])
+
+    print(len(used_files))
 
 if __name__ == '__main__':
     main()

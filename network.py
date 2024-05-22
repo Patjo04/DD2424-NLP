@@ -6,7 +6,11 @@ from data import DataSource
 import numpy as np
 
 """ 
+<<<<<<< HEAD
     Authors: Rasmus Söderström Nylander, Erik Lidbjörk, Patrik Johansson and Gustaf Larsson.
+=======
+    Authors: Erik Lidbjörk, Rasmus Söderström Nylander, Patrik Johansson.
+>>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
     Date: 2024.
 """
 
@@ -187,12 +191,25 @@ class Network(nn.Module):
         batch = 0
         for features, label in data_src.labeled_samples_batch(batch_size):
             batch += 1
+<<<<<<< HEAD
             logits = self.forward(features)
             probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
+=======
+            #self.eval()
+
+            # ge till systemet
+            # softmaxa det hela
+            # jämför med resultat 
+            logits = self.forward(features)
+            #torch.Size([1, 83])
+            #print(logits.shape)
+            probs = torch.softmax(logits, dim=-1)
+>>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
             index = torch.argmax(probs)
             result = self._i2w[index]
             if result == label[0]:
                 odds += 1
+<<<<<<< HEAD
             #print("Expected: " + str(label[0]))
             #print("Actual: " + str(result))
 
@@ -225,5 +242,80 @@ class Network(nn.Module):
         odds = net.evaluate_model(1, data_test)
         print("Acc = " + str(odds))
         
+=======
+                #print(odds)
+            #print("Expected: " + str(label[0]))
+            #print("Actual: " + str(result))
+
+
+        bet = odds/batch
+        print("Odds = " + str(bet))
+        # Odds = 0.84075 #about that value
+        return bet
+
+        
+            
+        # argmaxa
+
+
+        # jämför med labels
+        #with open data_src as file:
+        #    for line in data_src:
+        #        intake, label = data_src.split(",")
+        #        result = predict(intake)
+        #        print("Expected: " + str(label))
+        #        print("Actual: " + str(result))
+
+
+
+
+    @staticmethod
+    def main() -> None:
+        data_src = DataSource("./data/train.txt")
+        net = Network(data_src, use_my_torch=False)
+        data_test = DataSource("./data/test.txt")
+
+        gathered = [[],[],[],[],[]]
+        for i, data in enumerate(data_src.labeled_samples_batch(1)):
+            gathered[(i%5)-1].append(data)
+            
+        for i in range(0, 5):
+            val = gathered[i]
+            train = gathered.remove[i]
+
+        epochs = 10
+        accuracy = {}
+        for i in range(1, epochs+1):
+            net.train_model(data_src)
+            accuracy[i] = net.evaluate_model(1, data_test)
+
+        print(accuracy)
+        # --> before training: Odds = 0.00955
+        # 0.8368
+        # 0.8569
+        # 0.8663
+        # 0.87165
+        # 0.875
+        # 0.8803
+        # 0.88155
+        # 0.88165
+        # 0.88525
+
+        # {1: 0.65505, 2: 0.6687, 3: 0.67475, 4: 0.6745, 5: 0.67745, 6: 0.6852, 7: 0.6842, 8: 0.6838, 9: 0.68575, 10: 0.6873}
+        # {1: 0.4941, 2: 0.49485, 3: 0.4951, 4: 0.4945, 5: 0.495, 6: 0.495, 7: 0.49485, 8: 0.4952, 9: 0.495, 10: 0.4952}
+# TODO: Should probably be moved to another file.
+class Special:
+    PADDING = '<P>'
+    UNKNOWN = '<U>'
+    START = '<S>'
+    
+    def all():
+        return [Special.PADDING, Special.UNKNOWN, Special.START]
+    
+    def size(): 
+        return len(Special.all())
+
+
+>>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
 if __name__ == '__main__':
     Network.main()

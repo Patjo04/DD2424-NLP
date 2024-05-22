@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import nn
 import mytorch
@@ -200,14 +201,31 @@ class Network(nn.Module):
         bet = odds / batch
         return bet
 
+
+    def save(self, path) -> None:
+        torch.save(self, path)
+
+    def load(path):
+        device = "cuda" if torch.cuda.is_available()\
+                else "mps" if torch.backends.mps.is_available()\
+                else "cpu"
+        model = torch.load(path)
+        model.to(device)
+        return model
+
     @staticmethod
     def main() -> None:
-        data_src = DataSource("./data/train.txt")
-        net = Network(data_src, use_my_torch=False, network_type='lstm', num_layers=1)
-        net.train_model(data_src)
+        model_path = 'model.pt'
+        if os.path.isfile(model_path):
+            net = Network.load(model_path)
+        else:
+            data_src = DataSource("./data/train.txt")
+            net = Network(data_src, use_my_torch=False, network_type='lstm', num_layers=1)
+            net.train_model(data_src)
+            net.save(model_path)
         data_test = DataSource("./data/test.txt")
         odds = net.evaluate_model(1, data_test)
-        print("Odds = " + str(odds))
+        print("Acc = " + str(odds))
         
 if __name__ == '__main__':
     Network.main()

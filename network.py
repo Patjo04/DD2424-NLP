@@ -191,58 +191,12 @@ class Network(nn.Module):
         batch = 0
         for features, label in data_src.labeled_samples_batch(batch_size):
             batch += 1
-<<<<<<< HEAD
             logits = self.forward(features)
             probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
-=======
-            #self.eval()
-
-            # ge till systemet
-            # softmaxa det hela
-            # jämför med resultat 
-            logits = self.forward(features)
-            #torch.Size([1, 83])
-            #print(logits.shape)
-            probs = torch.softmax(logits, dim=-1)
->>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
             index = torch.argmax(probs)
             result = self._i2w[index]
             if result == label[0]:
                 odds += 1
-<<<<<<< HEAD
-            #print("Expected: " + str(label[0]))
-            #print("Actual: " + str(result))
-
-        bet = odds / batch
-        return bet
-
-
-    def save(self, path) -> None:
-        torch.save(self, path)
-
-    def load(path):
-        device = "cuda" if torch.cuda.is_available()\
-                else "mps" if torch.backends.mps.is_available()\
-                else "cpu"
-        model = torch.load(path)
-        model.to(device)
-        return model
-
-    @staticmethod
-    def main() -> None:
-        model_path = 'model.pt'
-        if os.path.isfile(model_path):
-            net = Network.load(model_path)
-        else:
-            data_src = DataSource("./data/train.txt")
-            net = Network(data_src, use_my_torch=False, network_type='lstm', num_layers=1)
-            net.train_model(data_src)
-            net.save(model_path)
-        data_test = DataSource("./data/test.txt")
-        odds = net.evaluate_model(1, data_test)
-        print("Acc = " + str(odds))
-        
-=======
                 #print(odds)
             #print("Expected: " + str(label[0]))
             #print("Actual: " + str(result))
@@ -275,13 +229,13 @@ class Network(nn.Module):
         net = Network(data_src, use_my_torch=False)
         data_test = DataSource("./data/test.txt")
 
-        gathered = [[],[],[],[],[]]
-        for i, data in enumerate(data_src.labeled_samples_batch(1)):
-            gathered[(i%5)-1].append(data)
+        #gathered = [[],[],[],[],[]]
+        #for i, data in enumerate(data_src.labeled_samples_batch(1)):
+        #    gathered[(i%5)-1].append(data)
             
-        for i in range(0, 5):
-            val = gathered[i]
-            train = gathered.remove[i]
+        #for i in range(0, 5):
+        #    val = gathered[i]
+        #    train = gathered.remove[i]
 
         epochs = 10
         accuracy = {}
@@ -316,6 +270,5 @@ class Special:
         return len(Special.all())
 
 
->>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
 if __name__ == '__main__':
     Network.main()

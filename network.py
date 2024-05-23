@@ -154,10 +154,18 @@ class Network(nn.Module):
     def forward(self, x: any) -> None:
         if type(x) == str:
             x = [x]
-        max_len = max(map(len, x))
-        x = map(\
-                lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
-                x)
+        try:
+            max_len = max(map(len, x))
+        except TypeError:
+            max_len = 1
+        try:
+            x = map(\
+                    lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
+                    x)
+        except TypeError:
+            x = map(\
+                    lambda ctx: [self._padding] * (max_len - 1) + ctx,\
+                    x)
         x = list(x)
         x = list(map(\
                 lambda ctx:\
@@ -206,6 +214,95 @@ class Network(nn.Module):
         print("Odds = " + str(bet))
         # Odds = 0.84075 #about that value
         return bet
+    
+
+    def train_list_model(self, 
+                    contexts, labels, 
+                    epochs: int = 1,
+                    batch_size: int = 16,
+                    optimizer_type: str = 'adam',
+                    loss_type: str = 'cross entropy') -> None:
+
+        match optimizer_type.strip().lower():
+            case 'sgd':
+                optimizer = torch.optim.SGD(self.parameters())
+            case 'adam':
+                optimizer = torch.optim.Adam(self.parameters())
+            case 'adagrad':
+                optimizer = torch.optim.Adagrad(self.parameters())
+            case _:
+                raise ValueError("Unknown optimizer.")
+
+        match loss_type.strip().lower():
+            case 'cross entropy':
+                criterion = torch.nn.CrossEntropyLoss()
+            case _:
+                raise ValueError("Unknown loss.")
+
+        print('Starting training')
+        self.train() # Set to training mode.
+        try: 
+            for epoch in range(epochs):
+                print('epoch', epoch+1)
+                epoch_loss = 0.0
+                running_loss = 0.0
+                for i in range(0, len(labels)):
+                    value = i
+                    # get the inputs; data is a list of [inputs, labels]
+                    context = contexts[i]
+                    #print("Sak")
+                    #print(str(context))
+                    label = labels[i]
+                    #print(str(label))
+
+                    #labels = list(map(lambda l: Special.UNKNOWN if l not in self._w2i else l, labels))
+                    label = list(map(lambda l: self._w2i[l], label))
+                    label = torch.tensor(label).to(self._device)
+                
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward + backward + optimize
+                    outputs = self(context)
+                    loss = criterion(outputs, label)
+                    loss.backward()
+                    optimizer.step()
+
+                    # print statistics
+                    running_loss += loss.item()
+                    epoch_loss += loss.item()
+                    if i % 1000 == 999:    # print every 200 mini-batches
+                        print(f'[{epoch + 1}, {value + 1:5d}] loss: {running_loss / 1000:.3f}')
+                        running_loss = 0.0
+                        #print(f'[epoch {epoch + 1}] loss: {epoch_loss / (value+1):.3f}')
+            self.eval()
+            print('Finished Training')
+
+        except KeyboardInterrupt:
+            self.eval()
+            print('Finished Training early')
+
+    def evaluate_list_model(self, features, labels):
+        odds = 0
+        batch = 0
+        for i in range(len(labels)):
+            batch += 1
+            logits = self.forward(features[i])
+            probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
+            index = torch.argmax(probs)
+            result = self._i2w[index]
+            reference = labels[i]
+            if result == reference[0]:
+                odds += 1
+                #print(odds)
+            #print("Expected: " + str(label[0]))
+            #print("Actual: " + str(result))
+
+
+        bet = odds/batch
+        print("Odds = " + str(bet))
+        # Odds = 0.84075 #about that value
+        return bet
 
         
             
@@ -229,31 +326,51 @@ class Network(nn.Module):
         net = Network(data_src, use_my_torch=False)
         data_test = DataSource("./data/test.txt")
 
-        #gathered = [[],[],[],[],[]]
-        #for i, data in enumerate(data_src.labeled_samples_batch(1)):
-        #    gathered[(i%5)-1].append(data)
-            
-        #for i in range(0, 5):
-        #    val = gathered[i]
-        #    train = gathered.remove[i]
-
-        epochs = 10
         accuracy = {}
-        for i in range(1, epochs+1):
-            net.train_model(data_src)
-            accuracy[i] = net.evaluate_model(1, data_test)
 
-        print(accuracy)
-        # --> before training: Odds = 0.00955
-        # 0.8368
-        # 0.8569
-        # 0.8663
-        # 0.87165
-        # 0.875
-        # 0.8803
-        # 0.88155
-        # 0.88165
-        # 0.88525
+        for i in range(0, 3):
+            training_data = []
+            training_labels = []
+            validation_data = []
+            validation_labels = []
+            for j, data in enumerate(data_src.labeled_samples_batch(1)):
+                features, labels = data
+                #print(features)
+                #print(labels)
+                if j % 3 == i:
+                    validation_data.append(features)
+                    validation_labels.append(labels)
+                else:
+                    training_data.append(features)
+                    training_labels.append(labels)
+                
+                if j < 6:
+                    print(j)
+                    print(training_labels)
+                    print(validation_labels)
+
+            print(len(training_data))
+            print(len(validation_data))
+
+            #epochs = 2
+            #accuracy = {}
+            #for i in range(1, epochs+1):
+            net.train_list_model(training_data, training_labels)
+                #accuracy[i] = net.evaluate_model(1, data_test)
+
+            accuracy[i] = net.evaluate_list_model(validation_data, validation_labels)
+
+            print(accuracy)
+            # --> before training: Odds = 0.00955
+            # 0.8368
+            # 0.8569
+            # 0.8663
+            # 0.87165
+            # 0.875
+            # 0.8803
+            # 0.88155
+            # 0.88165
+            # 0.88525
 
         # {1: 0.65505, 2: 0.6687, 3: 0.67475, 4: 0.6745, 5: 0.67745, 6: 0.6852, 7: 0.6842, 8: 0.6838, 9: 0.68575, 10: 0.6873}
         # {1: 0.4941, 2: 0.49485, 3: 0.4951, 4: 0.4945, 5: 0.495, 6: 0.495, 7: 0.49485, 8: 0.4952, 9: 0.495, 10: 0.4952}

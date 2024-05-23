@@ -4,6 +4,7 @@ from torch import nn
 import mytorch
 from data import DataSource
 import numpy as np
+import argparse
 
 """ 
     Authors: Rasmus Söderström Nylander, Erik Lidbjörk, Patrik Johansson and Gustaf Larsson.
@@ -38,12 +39,11 @@ class Network(nn.Module):
 
     def __init__(self, 
                  data_src: DataSource = None, 
-                 embedding_dim: int = 100,
-                 num_layers: int = 1,
+                 num_layers: int = 2,
                  hidden_size: int = 50,
                  use_my_torch: bool = True,
                  dropout_rate: float = 0.5,
-                 network_type: str = 'lstm') -> None:
+                 network_type: str = 'rnn') -> None:
         super().__init__()
         self._device = (
                 "cuda" if torch.cuda.is_available()
@@ -55,6 +55,7 @@ class Network(nn.Module):
         self.add_word(self._padding)
         self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
+        embedding_dim = self._vocab_size #hotfix
         self._output_size = self._vocab_size
         self._embedding_dim = embedding_dim
         self._embeddings = nn.Embedding(self._vocab_size, embedding_dim)
@@ -88,7 +89,7 @@ class Network(nn.Module):
 
     def train_model(self, 
                     data_src: DataSource, 
-                    epochs: int = 1,
+                    epochs: int = 5,
                     batch_size: int = 16,
                     optimizer_type: str = 'adam',
                     loss_type: str = 'cross entropy') -> None:
@@ -159,17 +160,16 @@ class Network(nn.Module):
                 lambda ctx:\
                 list(map(lambda w: self._w2i[w], ctx)),\
                 x))
-        ctx = torch.tensor(x, dtype=torch.long).to(self._device)
-        ctx = ctx.permute((1, 0))
-        ctx_emb = self._embeddings(ctx).float()
+        ctx = torch.tensor(x).to(self._device)
+        ctx = ctx.permute((1, 0)) 
+        ctx_emb = torch.nn.functional.one_hot(ctx, num_classes=len(self._i2w)).to(self._device).float()
         
-        _, sentence_state = self._rnn(ctx_emb)
+        _, hidden = self._rnn(ctx_emb)
         if self._network_type == 'lstm':
-            sentence_state = sentence_state[0] # Retrieve h's
-        batch_size = sentence_state.shape[1]
-        sentence_state = sentence_state.reshape((batch_size, -1))
-        sentence_state = self._dropout(sentence_state)
-        logits = self._final(sentence_state)
+            hidden = hidden[0] # Retrieve h's
+        
+        last_hidden = hidden[-1]
+        logits = self._final(last_hidden)
         return logits
 
     def learn_vocab(self, data_src: DataSource) -> None:
@@ -215,17 +215,27 @@ class Network(nn.Module):
 
     @staticmethod
     def main() -> None:
-        model_path = 'model.pt'
-        if os.path.isfile(model_path):
+        parser = argparse.ArgumentParser(prog='network.py')
+        parser.add_argument('data', type=str)
+        parser.add_argument('-m', '--model', type=str)
+        args = parser.parse_args()
+        data_dir = args.data
+        train_path = os.path.join(data_dir, 'train.txt')
+        test_path = os.path.join(data_dir, 'test.txt')
+        model_path = args.model
+
+        if model_path is not None and os.path.isfile(model_path):
             net = Network.load(model_path)
         else:
-            data_src = DataSource("./data/train.txt")
+            data_src = DataSource(train_path)
             net = Network(data_src, use_my_torch=False, network_type='lstm', num_layers=1)
             net.train_model(data_src)
-            net.save(model_path)
-        data_test = DataSource("./data/test.txt")
+            if model_path is not None:
+                net.save(model_path)
+
+        data_test = DataSource(test_path)
         odds = net.evaluate_model(1, data_test)
-        print("Acc = " + str(odds))
+        print("Acc = " + str(odds * 100))
         
 if __name__ == '__main__':
     Network.main()

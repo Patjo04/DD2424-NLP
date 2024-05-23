@@ -6,7 +6,7 @@ class DataSource:
         self._encoding = 'utf-8'
 
     def vocab(self) -> list[str]:
-        return Lexer.VOCAB + ['$']
+        return ['$'] + Lexer.VOCAB
 
     # Return a list of data (context, label):
     def labeled_samples_batch(self, batch_size: int, discard_trailing=False) -> any:

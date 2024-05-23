@@ -330,10 +330,15 @@ class Network(nn.Module):
         accuracy = {}
         nets = {}
         data_src = DataSource(train_path)
-        k = 3
+        k = 5
         tot_acc = 0
+        batch_size = 1
+        hidden_size = 50
+        network_type = 'rnn'
+        num_layers = 1
+        epochs = 5
         for i in range(k):
-            net = Network(data_src, network_type='gru', num_layers=2, use_my_torch=mytorch)
+            net = Network(data_src, hidden_size=hidden_size, network_type=network_type, num_layers=num_layers, use_my_torch=mytorch)
 
             training_data = []
             training_labels = []
@@ -348,7 +353,7 @@ class Network(nn.Module):
                     training_data.append(features[0])
                     training_labels.append(labels[0])
                 
-            net.train_list_model(training_data, training_labels)
+            net.train_list_model(training_data, training_labels, batch_size=batch_size, epochs=epochs)
 
             accuracy[i] = net.evaluate_list_model(validation_data, validation_labels)
             nets[i] = net

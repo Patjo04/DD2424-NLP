@@ -95,9 +95,9 @@ class RNN(RNNBase):
         batch_size = x.shape[1]
 
         if h_0 is None:
-            h_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size)
+            h_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size).to(x.device)
 
-        output = torch.empty(seq_length, batch_size, self._hidden_size)
+        output = torch.empty(seq_length, batch_size, self._hidden_size).to(x.device)
         #output = torch.empty(seq_length, batch_size, self._input_size)
         h = h_0
         for t in range(seq_length):
@@ -138,8 +138,8 @@ class LSTM(RNNBase):
         batch_size = x.shape[1]
 
         if states is None:
-            h_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size)
-            c_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size)
+            h_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size).to(x.device)
+            c_0 = torch.zeros(self._num_layers, batch_size, self._hidden_size).to(x.device)
         else:
             h_0, c_0 = states
 
@@ -149,12 +149,14 @@ class LSTM(RNNBase):
         for t in range(seq_length):
             for layer in range(self._num_layers):
                 # Update equations.
-                hclone = h[layer].clone()
+                hclone = h[layer].clone().to(x.device)
                 f = self._sigma['g'](x[t] @ self._W['f'][layer].T + hclone @ self._U['f'][layer].T + self._b['f'][layer])
                 i = self._sigma['g'](x[t] @ self._W['i'][layer].T + hclone @ self._U['i'][layer].T + self._b['i'][layer])
                 o = self._sigma['g'](x[t] @ self._W['o'][layer].T + hclone @ self._U['o'][layer].T + self._b['o'][layer])
                 ct = self._sigma['c'](x[t] @ self._W['c'][layer].T + hclone @ self._U['c'][layer].T + self._b['c'][layer])
-                c[layer] = f * c[layer].clone() + i * ct
+                c[layer] = f * c[layer].clone().to(x.device) + i * ct
+                
+                bruh = self._sigma['g'](c[layer])
                 h[layer] = o * self._sigma['h'](c[layer])
             output[t] = h[-1]
         return output, (h, c)

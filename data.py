@@ -6,7 +6,7 @@ class DataSource:
         self._encoding = 'utf-8'
 
     def vocab(self) -> list[str]:
-        return Lexer.VOCAB + ['$']
+        return ['$'] + Lexer.VOCAB
 
     # Return a list of data (context, label):
     def labeled_samples_batch(self, batch_size: int, discard_trailing=False) -> any:
@@ -31,4 +31,20 @@ class DataSource:
                 label = parts[1].strip()
                 yield feature, label
 
+
+def batch(features, labels, batch_size, discard_trailing=False):
+    batch_size = max(1, batch_size)
+    batch_features = []
+    batch_labels = []
+    for i in range(len(labels)):
+        feature = features[i]
+        label = labels[i]
+        batch_features.append(feature)
+        batch_labels.append(label)
+        if len(batch_labels) == batch_size:
+            yield batch_features, batch_labels
+            batch_features = []
+            batch_labels = []
+        if len(batch_labels) > 0 and not discard_trailing:
+            yield batch_features, batch_labels
 

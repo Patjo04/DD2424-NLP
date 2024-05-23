@@ -2,8 +2,9 @@ import os
 import torch
 from torch import nn
 import mytorch
-from data import DataSource
+from data import DataSource, batch
 import numpy as np
+import argparse
 
 """ 
 <<<<<<< HEAD
@@ -42,12 +43,11 @@ class Network(nn.Module):
 
     def __init__(self, 
                  data_src: DataSource = None, 
-                 embedding_dim: int = 100,
-                 num_layers: int = 1,
+                 num_layers: int = 2,
                  hidden_size: int = 50,
                  use_my_torch: bool = True,
                  dropout_rate: float = 0.5,
-                 network_type: str = 'lstm') -> None:
+                 network_type: str = 'rnn') -> None:
         super().__init__()
         self._device = (
                 "cuda" if torch.cuda.is_available()
@@ -59,6 +59,7 @@ class Network(nn.Module):
         self.add_word(self._padding)
         self.learn_vocab(data_src)
         self._vocab_size = len(self._w2i)
+        embedding_dim = self._vocab_size #hotfix
         self._output_size = self._vocab_size
         self._embedding_dim = embedding_dim
         self._embeddings = nn.Embedding(self._vocab_size, embedding_dim)
@@ -86,13 +87,13 @@ class Network(nn.Module):
 
         self._final = torch.nn.Sequential(*layers,\
                 torch.nn.Linear(\
-                num_layers * hidden_size,\
+                hidden_size,\
                 self._output_size))
         self.to(self._device)
 
     def train_model(self, 
                     data_src: DataSource, 
-                    epochs: int = 1,
+                    epochs: int = 5,
                     batch_size: int = 16,
                     optimizer_type: str = 'adam',
                     loss_type: str = 'cross entropy') -> None:
@@ -152,36 +153,25 @@ class Network(nn.Module):
             print('Finished Training early')
 
     def forward(self, x: any) -> None:
-        if type(x) == str:
-            x = [x]
-        try:
-            max_len = max(map(len, x))
-        except TypeError:
-            max_len = 1
-        try:
-            x = map(\
-                    lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
-                    x)
-        except TypeError:
-            x = map(\
-                    lambda ctx: [self._padding] * (max_len - 1) + ctx,\
-                    x)
+        max_len = max(map(len, x))
+        x = map(\
+                lambda ctx: [self._padding] * (max_len - len(ctx)) + ctx,\
+                x)
         x = list(x)
         x = list(map(\
                 lambda ctx:\
                 list(map(lambda w: self._w2i[w], ctx)),\
                 x))
-        ctx = torch.tensor(x, dtype=torch.long).to(self._device)
-        ctx = ctx.permute((1, 0))
-        ctx_emb = self._embeddings(ctx).float()
+        ctx = torch.tensor(x).to(self._device)
+        ctx = ctx.permute((1, 0)) 
+        ctx_emb = torch.nn.functional.one_hot(ctx, num_classes=len(self._i2w)).to(self._device).float()
         
-        _, sentence_state = self._rnn(ctx_emb)
+        _, hidden = self._rnn(ctx_emb)
         if self._network_type == 'lstm':
-            sentence_state = sentence_state[0] # Retrieve h's
-        batch_size = sentence_state.shape[1]
-        sentence_state = sentence_state.reshape((batch_size, -1))
-        sentence_state = self._dropout(sentence_state)
-        logits = self._final(sentence_state)
+            hidden = hidden[0] # Retrieve h's
+        
+        last_hidden = hidden[-1]
+        logits = self._final(last_hidden)
         return logits
 
     def learn_vocab(self, data_src: DataSource) -> None:
@@ -246,25 +236,17 @@ class Network(nn.Module):
                 print('epoch', epoch+1)
                 epoch_loss = 0.0
                 running_loss = 0.0
-                for i in range(0, len(labels)):
-                    value = i
-                    # get the inputs; data is a list of [inputs, labels]
-                    context = contexts[i]
-                    #print("Sak")
-                    #print(str(context))
-                    label = labels[i]
-                    #print(str(label))
-
-                    #labels = list(map(lambda l: Special.UNKNOWN if l not in self._w2i else l, labels))
-                    label = list(map(lambda l: self._w2i[l], label))
-                    label = torch.tensor(label).to(self._device)
+                for i, data in enumerate(batch(contexts, labels, batch_size)):
+                    ctx, lbl = data
+                    lbl = list(map(lambda l: self._w2i[l], lbl))
+                    lbl = torch.tensor(lbl).to(self._device)
                 
                     # zero the parameter gradients
                     optimizer.zero_grad()
 
                     # forward + backward + optimize
-                    outputs = self(context)
-                    loss = criterion(outputs, label)
+                    outputs = self(ctx)
+                    loss = criterion(outputs, lbl)
                     loss.backward()
                     optimizer.step()
 
@@ -272,7 +254,7 @@ class Network(nn.Module):
                     running_loss += loss.item()
                     epoch_loss += loss.item()
                     if i % 1000 == 999:    # print every 200 mini-batches
-                        print(f'[{epoch + 1}, {value + 1:5d}] loss: {running_loss / 1000:.3f}')
+                        print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 1000:.3f}')
                         running_loss = 0.0
                         #print(f'[epoch {epoch + 1}] loss: {epoch_loss / (value+1):.3f}')
             self.eval()
@@ -287,12 +269,12 @@ class Network(nn.Module):
         batch = 0
         for i in range(len(labels)):
             batch += 1
-            logits = self.forward(features[i])
+            logits = self.forward([features[i]])
             probs = torch.softmax(logits, dim = -1) # dim = 0 is batch dimension, so choose 1 or -1.
             index = torch.argmax(probs)
             result = self._i2w[index]
             reference = labels[i]
-            if result == reference[0]:
+            if result == reference:
                 odds += 1
                 #print(odds)
             #print("Expected: " + str(label[0]))
@@ -322,58 +304,58 @@ class Network(nn.Module):
 
     @staticmethod
     def main() -> None:
-        data_src = DataSource("./data/train.txt")
-        net = Network(data_src, use_my_torch=False)
-        data_test = DataSource("./data/test.txt")
+        parser = argparse.ArgumentParser(prog='network.py')
+        parser.add_argument('data', type=str)
+        parser.add_argument('-m', '--model', type=str)
+        args = parser.parse_args()
+        data_dir = args.data
+        train_path = os.path.join(data_dir, 'train.txt')
+        test_path = os.path.join(data_dir, 'test.txt')
+        model_path = args.model
+        mytorch = True
+
+        #if model_path is not None and os.path.isfile(model_path):
+        #    net = Network.load(model_path)
+        #else:
+        #    data_src = DataSource(train_path)
+        #    net = Network(data_src, use_my_torch=mytorch, network_type='lstm', num_layers=1)
+        #    net.train_model(data_src)
+        #    if model_path is not None:
+        #        net.save(model_path)
+
+        #data_test = DataSource(test_path)
+        #odds = net.evaluate_model(1, data_test)
+        #print("Acc = " + str(odds * 100))
 
         accuracy = {}
+        nets = {}
+        data_src = DataSource(train_path)
+        k = 3
+        tot_acc = 0
+        for i in range(k):
+            net = Network(data_src, network_type='gru', num_layers=2, use_my_torch=mytorch)
 
-        for i in range(0, 3):
             training_data = []
             training_labels = []
             validation_data = []
             validation_labels = []
             for j, data in enumerate(data_src.labeled_samples_batch(1)):
                 features, labels = data
-                #print(features)
-                #print(labels)
-                if j % 3 == i:
-                    validation_data.append(features)
-                    validation_labels.append(labels)
+                if j % k == i:
+                    validation_data.append(features[0])
+                    validation_labels.append(labels[0])
                 else:
-                    training_data.append(features)
-                    training_labels.append(labels)
+                    training_data.append(features[0])
+                    training_labels.append(labels[0])
                 
-                if j < 6:
-                    print(j)
-                    print(training_labels)
-                    print(validation_labels)
-
-            print(len(training_data))
-            print(len(validation_data))
-
-            #epochs = 2
-            #accuracy = {}
-            #for i in range(1, epochs+1):
             net.train_list_model(training_data, training_labels)
-                #accuracy[i] = net.evaluate_model(1, data_test)
 
             accuracy[i] = net.evaluate_list_model(validation_data, validation_labels)
+            nets[i] = net
+            tot_acc += accuracy[i]
+            print(f'Accuracy (fold {i}): {accuracy[i]}')
+        print(f'Mean accuracy: {tot_acc / k}')
 
-            print(accuracy)
-            # --> before training: Odds = 0.00955
-            # 0.8368
-            # 0.8569
-            # 0.8663
-            # 0.87165
-            # 0.875
-            # 0.8803
-            # 0.88155
-            # 0.88165
-            # 0.88525
-
-        # {1: 0.65505, 2: 0.6687, 3: 0.67475, 4: 0.6745, 5: 0.67745, 6: 0.6852, 7: 0.6842, 8: 0.6838, 9: 0.68575, 10: 0.6873}
-        # {1: 0.4941, 2: 0.49485, 3: 0.4951, 4: 0.4945, 5: 0.495, 6: 0.495, 7: 0.49485, 8: 0.4952, 9: 0.495, 10: 0.4952}
 # TODO: Should probably be moved to another file.
 class Special:
     PADDING = '<P>'

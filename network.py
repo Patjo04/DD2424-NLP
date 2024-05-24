@@ -174,6 +174,11 @@ class Network(nn.Module):
         logits = self._final(last_hidden)
         return logits
 
+    def prob_to_word(self, prob):
+        i = torch.argmax(prob)
+        word = self._i2w[i]
+        return word
+
     def learn_vocab(self, data_src: DataSource) -> None:
         for word in data_src.vocab():
             self.add_word(word)     
@@ -300,6 +305,16 @@ class Network(nn.Module):
         #        print("Actual: " + str(result))
 
 
+    def save(self, path) -> None:
+        torch.save(self, path)
+
+    def load(path):
+        device = "cuda" if torch.cuda.is_available()\
+                else "mps" if torch.backends.mps.is_available()\
+                else "cpu"
+        model = torch.load(path)
+        model.to(device)
+        return model
 
 
     @staticmethod
@@ -314,18 +329,19 @@ class Network(nn.Module):
         model_path = args.model
         mytorch = True
 
-        #if model_path is not None and os.path.isfile(model_path):
-        #    net = Network.load(model_path)
-        #else:
-        #    data_src = DataSource(train_path)
-        #    net = Network(data_src, use_my_torch=mytorch, network_type='lstm', num_layers=1)
-        #    net.train_model(data_src)
-        #    if model_path is not None:
-        #        net.save(model_path)
-
-        #data_test = DataSource(test_path)
-        #odds = net.evaluate_model(1, data_test)
-        #print("Acc = " + str(odds * 100))
+        if model_path is not None:
+            if os.path.isfile(model_path):
+                net = Network.load(model_path)
+            else:
+                data_src = DataSource(train_path)
+                net = Network(data_src, use_my_torch=mytorch, network_type='lstm', num_layers=1)
+                net.train_model(data_src)
+                if model_path is not None:
+                    net.save(model_path)
+            #data_test = DataSource(test_path)
+            #odds = net.evaluate_model(1, data_test)
+            #print(f'Acc: {odds}')
+            return
 
         accuracy = {}
         nets = {}
@@ -336,7 +352,7 @@ class Network(nn.Module):
         hidden_size = 50
         network_type = 'rnn'
         num_layers = 1
-        epochs = 5
+        epochs = 1
         for i in range(k):
             net = Network(data_src, hidden_size=hidden_size, network_type=network_type, num_layers=num_layers, use_my_torch=mytorch)
 

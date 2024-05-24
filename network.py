@@ -312,7 +312,7 @@ class Network(nn.Module):
         device = "cuda" if torch.cuda.is_available()\
                 else "mps" if torch.backends.mps.is_available()\
                 else "cpu"
-        model = torch.load(path)
+        model = torch.load(path, map_location=torch.device(device))
         model.to(device)
         return model
 

@@ -7,11 +7,7 @@ import numpy as np
 import argparse
 
 """ 
-<<<<<<< HEAD
     Authors: Rasmus Söderström Nylander, Erik Lidbjörk, Patrik Johansson and Gustaf Larsson.
-=======
-    Authors: Erik Lidbjörk, Rasmus Söderström Nylander, Patrik Johansson.
->>>>>>> f475752b5d01724cdfbed5c2d75bde7e930f3d7b
     Date: 2024.
 """
 

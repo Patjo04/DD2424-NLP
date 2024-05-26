@@ -34,7 +34,7 @@ def main(ctx, ctx_len, model_path, out_len):
             token = token[3:].lower()
         elif token in lex.Lexer.VOCAB and token != 'IDENT':
             token = token.lower()
-        end = '\n' if token == ';' else ' '
+        end = '\n' if token in [';'] else ' '
         print(token, end=end)
 
 def reverse_lookup(token, dicts):

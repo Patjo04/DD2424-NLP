@@ -3,17 +3,17 @@ import torch
 import lex
 from network import Network
 
-def temp_scaling(prob, temp):
-    return prob # TODO
+def temp_scaling(logits, temp):
+    return logits / temp
 
 def generate(model, ctx, ctx_len, out_len):
     output = ctx
     while len(output) < out_len:
         k = min(ctx_len, len(output))
         ctx = (output[-k:] if k > 0 else []) + ['$']
-        prob = model([ctx])
-        prob = temp_scaling(prob, 1.0)
-        word = model.prob_to_word(prob)
+        logits = model([ctx])
+        logits = temp_scaling(logits, 1.0)
+        word = model.logits_to_word(logits)
         output.append(word)
     return output
 
@@ -34,7 +34,8 @@ def main(ctx, ctx_len, model_path, out_len):
             token = token[3:].lower()
         elif token in lex.Lexer.VOCAB and token != 'IDENT':
             token = token.lower()
-        print(token, end=' ')
+        end = '\n' if token == ';' else ' '
+        print(token, end=end)
 
 def reverse_lookup(token, dicts):
     for dict in dicts:

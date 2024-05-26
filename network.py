@@ -174,8 +174,12 @@ class Network(nn.Module):
         logits = self._final(last_hidden)
         return logits
 
-    def prob_to_word(self, prob):
-        i = torch.argmax(prob)
+    def logits_to_word(self, logits, deterministic=False):
+        prob = torch.softmax(logits, dim=-1)
+        if deterministic:
+            i = torch.argmax(prob)
+        else:
+            i = torch.multinomial(prob, 1)[0]
         word = self._i2w[i]
         return word
 

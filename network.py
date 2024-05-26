@@ -174,11 +174,20 @@ class Network(nn.Module):
         logits = self._final(last_hidden)
         return logits
 
-    def logits_to_word(self, logits, deterministic=False):
+    def logits_to_word(self, logits, deterministic=False, p=0.95):
         prob = torch.softmax(logits, dim=-1)
         if deterministic:
             i = torch.argmax(prob)
         else:
+            idx = torch.argsort(prob, descending=True)
+            sorted = prob[0][idx]
+            cumsum = torch.cumsum(sorted, dim=-1)
+            for i in range(len(cumsum[0])):
+                k = i + 1
+                if cumsum[0][i] >= p:
+                    break
+            bottom = idx[0][k:]
+            prob[0][bottom] = 0
             i = torch.multinomial(prob, 1)[0]
         word = self._i2w[i]
         return word

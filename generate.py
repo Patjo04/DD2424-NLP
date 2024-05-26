@@ -6,13 +6,13 @@ from network import Network
 def temp_scaling(logits, temp):
     return logits / temp
 
-def generate(model, ctx, ctx_len, out_len):
+def generate(model, ctx, ctx_len, out_len, temp=1.0):
     output = ctx
     while len(output) < out_len:
         k = min(ctx_len, len(output))
         ctx = (output[-k:] if k > 0 else []) + ['$']
         logits = model([ctx])
-        logits = temp_scaling(logits, 1.0)
+        logits = temp_scaling(logits, temp)
         word = model.logits_to_word(logits)
         output.append(word)
     return output
